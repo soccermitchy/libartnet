@@ -32,11 +32,11 @@
 typedef unsigned long in_addr_t;
 #endif
 
-#include <artnet/common.h>
+#include "common.h"
 
 /* the external storage class is "extern" in UNIX; in MSW it's ugly. */
 #ifndef EXTERN
-#ifdef MSW
+#ifdef WIN32
 #define EXTERN __declspec(dllexport) extern
 #else
 #define EXTERN extern
@@ -259,7 +259,8 @@ EXTERN int artnet_send_dmx(artnet_node n,
 EXTERN int artnet_raw_send_dmx(artnet_node vn,
   uint8_t uni,
   int16_t length,
-  const uint8_t *data);
+  const uint8_t *data,
+  uint32_t to);
 EXTERN int artnet_send_address(artnet_node n,
   artnet_node_entry e,
   const char *shortName,
@@ -337,7 +338,7 @@ EXTERN int artnet_get_config(artnet_node n, artnet_node_config_t *config);
 EXTERN int artnet_get_sd(artnet_node n);
 EXTERN int artnet_set_fdset(artnet_node vn, fd_set *fdset);
 
-char *artnet_strerror();
+EXTERN char *artnet_strerror();
 
 #ifdef __cplusplus
 }

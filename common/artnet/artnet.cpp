@@ -17,6 +17,8 @@
  * Implementes the external functions for libartnet
  * Copyright (C) 2004-2007 Simon Newton
  */
+#include "stdafx.h"
+
 #include "private.h"
 
 // various constants used everywhere
@@ -79,7 +81,7 @@ artnet_node artnet_new(const char *ip, int verbose) {
   node n;
   int i;
 
-  n = malloc(sizeof(artnet_node_t));
+  n = (node)malloc(sizeof(artnet_node_t));
 
   if (!n) {
     artnet_error("malloc failure");
@@ -650,7 +652,7 @@ int artnet_send_dmx(artnet_node vn,
   } else {
     int nodes;
     // find the number of ports for this uni
-    SI *ips = malloc(sizeof(SI) * n->state.bcast_limit);
+    SI *ips = (SI*)malloc(sizeof(SI) * n->state.bcast_limit);
 
     if (!ips) {
       // Fallback to broadcast mode
@@ -692,7 +694,7 @@ int artnet_send_dmx(artnet_node vn,
 int artnet_raw_send_dmx(artnet_node vn,
                         uint8_t uni,
                         int16_t length,
-                        const uint8_t *data) {
+                        const uint8_t *data, uint32_t to) {
   node n = (node) vn;
   artnet_packet_t p;
 
@@ -709,8 +711,11 @@ int artnet_raw_send_dmx(artnet_node vn,
     return ARTNET_EARG;
   }
 
-  // set dst addr and length
-  p.to.s_addr = n->state.bcast_addr.s_addr;
+	// set dst addr and length
+	if( to == 0 )
+		p.to.s_addr = n->state.bcast_addr.s_addr;
+	else
+		p.to.s_addr = to;
 
   p.length = sizeof(artnet_dmx_t) - (ARTNET_DMX_LENGTH - length);
 
@@ -871,7 +876,7 @@ int artnet_send_firmware(
     blen = length * sizeof(uint16_t);
 
     // store the parameters for this transfer
-    ent->firmware.data = malloc(blen);
+    ent->firmware.data = (uint16_t*)malloc(blen);
 
     if ( ent->firmware.data == NULL) {
       artnet_error_malloc();
@@ -1369,8 +1374,8 @@ int artnet_dump_config(artnet_node vn) {
   printf("Node Type: %i\n", n->state.node_type);
   printf("Short Name: %s\n", n->state.short_name);
   printf("Long Name: %s\n", n->state.long_name);
-  printf("Subnet: %#02x\n", n->state.subnet);
-  printf("Default Subnet: %#02x\n", n->state.default_subnet);
+  printf("Subnet: %#hx\n", n->state.subnet);
+  printf("Default Subnet: %#hx\n", n->state.default_subnet);
   printf("Net Ctl: %i\n", n->state.subnet_net_ctl);
   printf("#####################\n");
 

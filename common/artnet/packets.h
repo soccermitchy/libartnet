@@ -26,10 +26,13 @@
 #include <stdint.h>
 
 #ifndef WIN32
-#include <netinet/in.h>
+	#include <netinet/in.h>
+	#define ATTRIBUTE_PACK __attribute__((packed))
+#else
+	#define ATTRIBUTE_PACK
 #endif
 
-#include <artnet/common.h>
+#include "common.h"
 
 enum { ARTNET_MAX_RDM_ADCOUNT = 32 };
 
@@ -40,6 +43,8 @@ enum { ARTNET_MAX_UID_COUNT = 200 };
 enum { ARTNET_MAX_RDM_DATA = 512 };
 
 enum { ARTNET_FIRMWARE_SIZE = 512 };
+
+#pragma pack(push,1)
 
 enum artnet_packet_type_e {
   ARTNET_POLL = 0x2000,
@@ -63,10 +68,9 @@ enum artnet_packet_type_e {
   ARTNET_MEDIA = 0x9000,
   ARTNET_MEDIAPATCH = 0x9200,
   ARTNET_MEDIACONTROLREPLY = 0x9300
-}__attribute__((packed));
+} ATTRIBUTE_PACK;
 
 typedef enum artnet_packet_type_e artnet_packet_type_t;
-
 
 struct artnet_poll_s {
   uint8_t  id[8];
@@ -75,7 +79,8 @@ struct artnet_poll_s {
   uint8_t  ver;
   uint8_t  ttm;
   uint8_t  pad;
-} __attribute__((packed));
+} ATTRIBUTE_PACK;
+
 
 typedef struct artnet_poll_s artnet_poll_t;
 
@@ -112,7 +117,7 @@ struct artnet_reply_s {
   uint8_t  style;
   uint8_t  mac[ARTNET_MAC_SIZE];
   uint8_t  filler[32];
-} __attribute__((packed));
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_reply_s artnet_reply_t;
 
@@ -144,7 +149,7 @@ struct artnet_ipprog_s {
   uint8_t  Spare7;
   uint8_t  Spare8;
 
-} __attribute__((packed));
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_ipprog_s artnet_ipprog_t;
 
@@ -175,10 +180,9 @@ struct artnet_ipprog_reply_s {
   uint8_t  Spare6;
   uint8_t  Spare7;
   uint8_t  Spare8;
-} __attribute__((packed));
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_ipprog_reply_s artnet_ipprog_reply_t;
-
 
 struct artnet_address_s {
   uint8_t  id[8];
@@ -194,10 +198,9 @@ struct artnet_address_s {
   uint8_t  subnet;
   uint8_t  swvideo;
   uint8_t  command;
-} __attribute__((packed));
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_address_s artnet_address_t;
-
 
 struct artnet_dmx_s {
   uint8_t  id[8];
@@ -210,10 +213,9 @@ struct artnet_dmx_s {
   uint8_t  lengthHi;
   uint8_t  length;
   uint8_t  data[ARTNET_DMX_LENGTH];
-} __attribute__((packed));
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_dmx_s artnet_dmx_t;
-
 
 struct artnet_input_s {
   uint8_t id[8];
@@ -225,10 +227,9 @@ struct artnet_input_s {
   uint8_t  numbportsH;
   uint8_t  numbports;
   uint8_t  input[ARTNET_MAX_PORTS];
-} __attribute__((packed));
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_input_s artnet_input_t;
-
 
 struct artnet_todrequest_s {
   uint8_t  id[8];
@@ -248,10 +249,9 @@ struct artnet_todrequest_s {
   uint8_t  command;
   uint8_t  adCount;
   uint8_t  address[ARTNET_MAX_RDM_ADCOUNT];
-} __attribute__((packed));
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_todrequest_s artnet_todrequest_t;
-
 
 
 struct artnet_toddata_s {
@@ -276,7 +276,7 @@ struct artnet_toddata_s {
   uint8_t  blockCount;
   uint8_t  uidCount;
   uint8_t  tod[ARTNET_MAX_UID_COUNT][ARTNET_RDM_UID_WIDTH];
-} __attribute__((packed));
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_toddata_s artnet_toddata_t;
 
@@ -292,7 +292,7 @@ struct artnet_firmware_s {
   uint8_t  length[4];
   uint8_t  spare[20];
   uint16_t  data[ARTNET_FIRMWARE_SIZE ];
-} __attribute__((packed));
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_firmware_s artnet_firmware_t;
 
@@ -313,12 +313,9 @@ struct artnet_todcontrol_s {
   uint8_t  spare8;
   uint8_t  cmd;
   uint8_t  address;
-} __attribute__((packed));
-
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_todcontrol_s artnet_todcontrol_t;
-
-
 
 struct artnet_rdm_s {
   uint8_t id[8];
@@ -338,11 +335,9 @@ struct artnet_rdm_s {
   uint8_t  cmd;
   uint8_t  address;
   uint8_t  data[ARTNET_MAX_RDM_DATA];
-} __attribute__((packed));
-
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_rdm_s artnet_rdm_t;
-
 
 struct artnet_firmware_reply_s {
   uint8_t  id[8];
@@ -353,11 +348,9 @@ struct artnet_firmware_reply_s {
   uint8_t  filler2;
   uint8_t  type;
   uint8_t  spare[21];
-} __attribute__((packed));
+}ATTRIBUTE_PACK;
 
 typedef struct artnet_firmware_reply_s artnet_firmware_reply_t;
-
-
 
 // union of all artnet packets
 typedef union {
@@ -386,5 +379,7 @@ typedef struct {
 } artnet_packet_t;
 
 typedef artnet_packet_t *artnet_packet;
+
+#pragma pack(pop)
 
 #endif

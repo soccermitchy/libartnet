@@ -19,12 +19,16 @@
  *
  */
 
+#include "stdafx.h"
+
 #include <errno.h>
 
 #ifndef WIN32
 #include <sys/socket.h> // socket before net/if.h for mac
 #include <net/if.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
+#include <cstddef>
 #else
 typedef int socklen_t;
 #include <winsock2.h>
@@ -32,7 +36,7 @@ typedef int socklen_t;
 #include <iphlpapi.h>
 #endif
 
-#include <unistd.h>
+//#include <unistd.h>
 
 #include "private.h"
 
@@ -51,7 +55,7 @@ typedef int socklen_t;
 
 enum { INITIAL_IFACE_COUNT = 10 };
 enum { IFACE_COUNT_INC = 5 };
-enum { IFNAME_SIZE = 32 }; // 32 sounds a reasonable size
+enum { IFNAME_SIZE = 32 }; // 32 sounds a reasonable size 
 
 typedef struct iface_s {
   struct sockaddr_in ip_addr;
@@ -71,10 +75,18 @@ unsigned long LOOPBACK_IP = 0x7F000001;
 static void free_ifaces(iface_t *head) {
   iface_t *ift, *ift_next;
 
+	printf("$$$ Freeing faces\n");
+	int count = 0;
+	
   for (ift = head; ift != NULL; ift = ift_next) {
+	printf("$$$ iface %d\n",count); count++;
+	
+	
     ift_next = ift->next;
     free(ift);
   }
+  
+  printf("$$$ End Freeing faces\n");
 }
 
 
@@ -84,6 +96,8 @@ static void free_ifaces(iface_t *head) {
  * @param tail pointer to the end of the list
  * @return a new iface_t or void
  */
+ 
+
 static iface_t *new_iface(iface_t **head, iface_t **tail) {
   iface_t *iface = (iface_t*) calloc(1, sizeof(iface_t));
 
@@ -93,80 +107,164 @@ static iface_t *new_iface(iface_t **head, iface_t **tail) {
   }
   memset(iface, 0, sizeof(iface_t));
 
+  iface->next = NULL;
+  
   if (!*head) {
     *head = *tail = iface;
   } else {
     (*tail)->next = iface;
     *tail = iface;
   }
+  
   return iface;
 }
 
 
+
 #ifdef WIN32
+
 
 /*
  * Set if_head to point to a list of iface_t structures which represent the
  * interfaces on this machine
  * @param ift_head the address of the pointer to the head of the list
  */
-static int get_ifaces(iface_t **if_head) {
-  iface_t *if_tail, *iface;
-  PIP_ADAPTER_INFO pAdapter = NULL;
-  PIP_ADAPTER_INFO pAdapterInfo;
-  IP_ADDR_STRING *ipAddress;
-  ULONG ulOutBufLen = sizeof(IP_ADAPTER_INFO);
-  unsigned long net, mask;
+static int get_ifaces(iface_t **if_head)
+{ 
+  iface_t *if_tail, *ift;
+  
+  int ret = ARTNET_EOK ;
+  
   if_tail = NULL;
+  
+  
+	PIP_ADAPTER_INFO pAdapterInfo;
+	PIP_ADAPTER_INFO pAdapter = NULL;
+	DWORD dwRetVal = 0;
+	ULONG ulOutBufLen = sizeof (IP_ADAPTER_INFO);
 
-  while (1) {
-    pAdapterInfo = (IP_ADAPTER_INFO*) malloc(ulOutBufLen);
-    if (!pAdapterInfo) {
-      artnet_error("Error allocating memory needed for GetAdaptersinfo");
-      return ARTNET_EMEM;
-    }
+	pAdapterInfo = (IP_ADAPTER_INFO *) malloc(sizeof (IP_ADAPTER_INFO));
+	if (pAdapterInfo == NULL)
+	{
+		artnet_error("%s : Error allocating memory needed to call GetAdaptersinfo" , __FUNCTION__);
+		return ARTNET_EMEM;	
+	}
 
-    DWORD status = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen);
-    if (status == NO_ERROR)
-      break;
+	// Make an initial call to GetAdaptersInfo to get
+	// the necessary size into the ulOutBufLen variable
+	if (GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW)
+	{
+		free(pAdapterInfo);
+		pAdapterInfo = (IP_ADAPTER_INFO *) malloc(ulOutBufLen) ; 
+		if (pAdapterInfo == NULL)
+		{
+			artnet_error("%s : Error allocating memory needed to call GetAdaptersinfo" , __FUNCTION__);
+			return ARTNET_EMEM;	
+		}
+	}	
+	
+	if ((dwRetVal = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen)) == NO_ERROR)
+	{
+		pAdapter = pAdapterInfo;
+		while (pAdapter)
+		{
+			unsigned long net, mask ;			
+			
+			/*
+				printf("\tComboIndex: \t%5d\n", (int)pAdapter->ComboIndex);
+				printf("\tAdapter Name: \t%s\n", pAdapter->AdapterName);
+				printf("\tAdapter Desc: \t%s\n", pAdapter->Description);
+				printf("\tAdapter Addr: \t");
+				for (i = 0; i < pAdapter->AddressLength; i++) {
+						if (i == (pAdapter->AddressLength - 1))
+								printf("%.2X\n", (int) pAdapter->Address[i]);
+						else
+								printf("%.2X-", (int) pAdapter->Address[i]);
+				}
+				printf("\tIndex: \t%d\n", (int)pAdapter->Index);
+				printf("\tType: \t");
+				switch (pAdapter->Type) {
+				case MIB_IF_TYPE_OTHER:
+						printf("Other\n");
+						break;
+				case MIB_IF_TYPE_ETHERNET:
+						printf("Ethernet\n");
+						break;
+				case MIB_IF_TYPE_TOKENRING:
+						printf("Token Ring\n");
+						break;
+				case MIB_IF_TYPE_FDDI:
+						printf("FDDI\n");
+						break;
+				case MIB_IF_TYPE_PPP:
+						printf("PPP\n");
+						break;
+				case MIB_IF_TYPE_LOOPBACK:
+						printf("Lookback\n");
+						break;
+				case MIB_IF_TYPE_SLIP:
+						printf("Slip\n");
+						break;
+				default:
+						printf("Unknown type %ld\n", (long)pAdapter->Type);
+						break;
+				}
 
-    free(pAdapterInfo);
-    if (status != ERROR_BUFFER_OVERFLOW) {
-      printf("GetAdaptersInfo failed with error: %d\n", (int) status);
-      return ARTNET_ENET;
-    }
-  }
+				printf("\tIP Address: \t%s\n",
+							 pAdapter->IpAddressList.IpAddress.String);
+				printf("\tIP Mask: \t%s\n", pAdapter->IpAddressList.IpMask.String);
 
-  for (pAdapter = pAdapterInfo;
-       pAdapter && pAdapter < pAdapterInfo + ulOutBufLen;
-       pAdapter = pAdapter->Next) {
+				printf("\tGateway: \t%s\n", pAdapter->GatewayList.IpAddress.String);
+				printf("\t***\n");
 
-    if(pAdapter->Type != MIB_IF_TYPE_ETHERNET && pAdapter->Type != IF_TYPE_IEEE80211)
-      continue;
+				if (pAdapter->DhcpEnabled) {
+						printf("\tDHCP Enabled: Yes\n");
+						printf("\t  DHCP Server: \t%s\n",
+									 pAdapter->DhcpServer.IpAddress.String);
+  			} else
+						printf("\tDHCP Enabled: No\n");
 
-    for (ipAddress = &pAdapter->IpAddressList; ipAddress;
-         ipAddress = ipAddress->Next) {
+				if (pAdapter->HaveWins) {
+						printf("\tHave Wins: Yes\n");
+						printf("\t  Primary Wins Server:    %s\n",
+									 pAdapter->PrimaryWinsServer.IpAddress.String);
+						printf("\t  Secondary Wins Server:  %s\n",
+									 pAdapter->SecondaryWinsServer.IpAddress.String);
+				} else
+						printf("\tHave Wins: No\n");
+				pAdapter = pAdapter->Next;
+				printf("\n");
+				*/					
+			
+			ift = new_iface(if_head, &if_tail);
+			if (ift == NULL) {
+				artnet_error("%s : calloc error %s" , __FUNCTION__, strerror(errno));
+				ret = ARTNET_EMEM;
+				goto nextAdapter ;
+			} 
 
-      net = inet_addr(ipAddress->IpAddress.String);
-      if (net) {
-        // Windows doesn't seem to have the notion of an interface being 'up'
-        // so we check if this interface has an address assigned.
-        iface = new_iface(if_head, &if_tail);
-        if (!iface)
-          continue;
-
-        mask = inet_addr(ipAddress->IpMask.String);
-        strncpy(iface->if_name, pAdapter->AdapterName, IFNAME_SIZE);
-        memcpy(iface->hw_addr, pAdapter->Address, ARTNET_MAC_SIZE);
-        iface->ip_addr.sin_addr.s_addr = net;
-        iface->bcast_addr.sin_addr.s_addr = (
-            (net & mask) | (0xFFFFFFFF ^ mask));
-      }
-    }
-  }
-
-  free(pAdapterInfo);
-  return (ARTNET_EOK);
+			net		= inet_addr(pAdapter->IpAddressList.IpAddress.String) ;
+			mask	= inet_addr(pAdapter->IpAddressList.IpMask.String) ;
+			
+			strncpy(ift->if_name, pAdapter->AdapterName, IFNAME_SIZE);
+			
+			memcpy(ift->hw_addr, pAdapter->Address, ARTNET_MAC_SIZE) ;
+			ift->ip_addr.sin_addr.s_addr     =  net ;
+			ift->bcast_addr.sin_addr.s_addr  = ((net & mask) | (0xFFFFFFFF ^ mask)) ;					
+				
+nextAdapter:
+			pAdapter = pAdapter->Next;
+		} // while adapter
+	} 
+	else 
+	{
+		printf("GetAdaptersInfo failed with error: %d\n", (int)dwRetVal);
+	}
+	if (pAdapterInfo)
+		free(pAdapterInfo) ;	
+	
+   
+  return (ret) ;
 }
 
 # else // not WIN32
@@ -281,7 +379,7 @@ static int get_ifaces(iface_t **if_head) {
   len = INITIAL_IFACE_COUNT * sizeof(struct ifreq);
 
   for (;;) {
-    buf = malloc(len);
+    buf = (char*)malloc(len);
 
     if (buf == NULL) {
       artnet_error_malloc();
@@ -384,6 +482,9 @@ static int get_ifaces(iface_t **if_head) {
     }
   }
   free(buf);
+  /*
+  * Close socket, this line of code wasn't here in the original distribution but very important
+  */
   close(sd);
   return ARTNET_EOK;
 
@@ -417,7 +518,7 @@ int artnet_net_init(node n, const char *preferred_ip) {
   if (n->state.verbose) {
     printf("#### INTERFACES FOUND ####\n");
     for (ift = ift_head; ift != NULL; ift = ift->next) {
-      printf("IP: %s\n", inet_ntoa(ift->ip_addr.sin_addr));
+	  printf("IP: %s\n", inet_ntoa(ift->ip_addr.sin_addr));
       printf("  bcast: %s\n" , inet_ntoa(ift->bcast_addr.sin_addr));
       printf("  hwaddr: ");
       for (i = 0; i < ARTNET_MAC_SIZE; i++) {
@@ -431,17 +532,18 @@ int artnet_net_init(node n, const char *preferred_ip) {
   }
 
   if (preferred_ip) {
-    // search through list of interfaces for one with the correct address
+	// search through list of interfaces for one with the correct address
     ret = artnet_net_inet_aton(preferred_ip, &wanted_ip);
     if (ret)
       goto e_cleanup;
 
     for (ift = ift_head; ift != NULL; ift = ift->next) {
       if (ift->ip_addr.sin_addr.s_addr == wanted_ip.s_addr) {
-        found = TRUE;
+		found = TRUE;
         n->state.ip_addr = ift->ip_addr.sin_addr;
         n->state.bcast_addr = ift->bcast_addr.sin_addr;
         memcpy(&n->state.hw_addr, &ift->hw_addr, ARTNET_MAC_SIZE);
+		
         break;
       }
     }
@@ -454,9 +556,12 @@ int artnet_net_init(node n, const char *preferred_ip) {
     if (ift_head) {
       // pick first address
       // copy ip address, bcast address and hardware address
-      n->state.ip_addr = ift_head->ip_addr.sin_addr;
+	  
+	  n->state.ip_addr = ift_head->ip_addr.sin_addr;
       n->state.bcast_addr = ift_head->bcast_addr.sin_addr;
       memcpy(&n->state.hw_addr, &ift_head->hw_addr, ARTNET_MAC_SIZE);
+	  
+	   
     } else {
       artnet_error("No interfaces found!");
       ret = ARTNET_ENET;
@@ -464,7 +569,8 @@ int artnet_net_init(node n, const char *preferred_ip) {
   }
 
 e_cleanup:
-  free_ifaces(ift_head);
+	 free_ifaces(ift_head);
+	
 e_return :
   return ret;
 }
@@ -486,7 +592,7 @@ int artnet_net_start(node n) {
     // check winsock version
     WSADATA wsaData;
     WORD wVersionRequested = MAKEWORD(2, 2);
-    if (WSAStartup(wVersionRequested, &wsaData) != 0)
+	if (WSAStartup(wVersionRequested, &wsaData) != 0)
       return (-1);
     if (wsaData.wVersion != wVersionRequested)
       return (-2);
@@ -500,17 +606,57 @@ int artnet_net_start(node n) {
       return ARTNET_ENET;
     }
 
+#ifdef WIN32
+    // ### LH - 22.08.2008
+    // make it possible to reuse port, if SO_REUSEADDR
+    // exists on operating system
+
+    // NEVER USE SO_EXCLUSIVEADDRUSE, as that freezes the application
+    // on WinXP, if port is in use !
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &true_flag, sizeof(true_flag)) < 0)
+	{
+
+      artnet_error("Set reuse failed", artnet_net_last_error());
+      artnet_net_close(sock);
+      return ARTNET_ENET;
+    }
+
+    u_long itrue = 1;
+    if (SOCKET_ERROR == ioctlsocket(sock, FIONBIO, &itrue)) {
+
+      artnet_error("ioctlsocket", artnet_net_last_error());
+      artnet_net_close(sock);
+      return ARTNET_ENET;
+    }
+#else
+    const int optval = 1;
+    setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof( optval ) );
+    setsockopt( sock, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof( optval ) );
+#endif
+
     memset(&servAddr, 0x00, sizeof(servAddr));
     servAddr.sin_family = AF_INET;
     servAddr.sin_port = htons(ARTNET_PORT);
     servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+#if defined( WIN32 )
+	//On windows we can bind the socket to the desired adapter and still receive broadcasts if we enable them. On osx though we no longer
+	//get broadcasts, even though we enable them. For that reason we have to bind to any on osx and manually filter.
+	servAddr.sin_addr.s_addr = n->state.ip_addr.s_addr;
+#else
+	if( setsockopt( sock, IPPROTO_IP, IP_RECVDSTADDR, (char*) &true_flag, sizeof( int ) ) == -1 )
+	{
+      artnet_error("Failed to enable dest addr retrieval %s", artnet_net_last_error());
+      artnet_net_close(sock);
+      return ARTNET_ENET;
+	}
+#endif
 
     if (n->state.verbose)
       printf("Binding to %s \n", inet_ntoa(servAddr.sin_addr));
 
     // bind sockets
     if (bind(sock, (SA *) &servAddr, sizeof(servAddr)) == -1) {
-      artnet_error("Failed to bind to socket %s", artnet_net_last_error());
+      artnet_error("Failed to bind to socket: %s", artnet_net_last_error());
       artnet_net_close(sock);
       return ARTNET_ENET;
     }
@@ -521,34 +667,10 @@ int artnet_net_start(node n) {
                    SO_BROADCAST,
                    (char*) &true_flag, // char* for win32
                    sizeof(int)) == -1) {
-      artnet_error("Failed to bind to socket %s", artnet_net_last_error());
+      artnet_error("Failed to enable broadcast: %s", artnet_net_last_error());
       artnet_net_close(sock);
       return ARTNET_ENET;
     }
-
-#ifdef WIN32
-    // ### LH - 22.08.2008
-    // make it possible to reuse port, if SO_REUSEADDR
-    // exists on operating system
-
-    // NEVER USE SO_EXCLUSIVEADDRUSE, as that freezes the application
-    // on WinXP, if port is in use !
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &true_flag,
-        sizeof(true_flag)) < 0) {
-
-      artnet_error("Set reuse failed", artnet_net_last_error());
-      artnet_net_close(sock);
-      return ARTNET_ENET;
-    }
-
-    u_long true = 1;
-    if (SOCKET_ERROR == ioctlsocket(sock, FIONBIO, &true)) {
-
-      artnet_error("ioctlsocket", artnet_net_last_error());
-      artnet_net_close(sock);
-      return ARTNET_ENET;
-    }
-#endif
 
     n->sd = sock;
     // Propagate the socket to all our peers
@@ -558,12 +680,11 @@ int artnet_net_start(node n) {
   return ARTNET_EOK;
 }
 
-
 /*
  * Receive a packet.
  */
 int artnet_net_recv(node n, artnet_packet p, int delay) {
-  ssize_t len;
+  ptrdiff_t len;
   struct sockaddr_in cliAddr;
   socklen_t cliLen = sizeof(cliAddr);
   fd_set rset;
@@ -593,6 +714,9 @@ int artnet_net_recv(node n, artnet_packet p, int delay) {
       break;
   }
 
+	//On windows binding to a specific ip and enabling broadcast works. On osx enabling the broadcast does not allow us
+	//to receive broadcasts, so for osx we have to manually filter.
+#if defined( WIN32 )
   // need a check here for the amount of data read
   // should prob allow an extra byte after data, and pass the size as sizeof(Data) +1
   // then check the size read and if equal to size(data)+1 we have an error
@@ -602,17 +726,62 @@ int artnet_net_recv(node n, artnet_packet p, int delay) {
                  0,
                  (SA*) &cliAddr,
                  &cliLen);
-  if (len < 0) {
-    artnet_error("Recvfrom error %s", artnet_net_last_error());
-    return ARTNET_ENET;
-  }
+#else
+	iovec iov;
+	iov.iov_base = &p->data;
+	iov.iov_len  = sizeof( p->data );
+	char controlBuffer[ 1024 ];//Should be enough to contain a cmsghdr and an in_addr. But lets make it a bit bigger so it'll also fit anything extra the os decides to put in there. (ipv6 address maybe?)
 
+	msghdr msgh;
+	msgh.msg_name = &cliAddr;
+	msgh.msg_namelen = cliLen;
+	msgh.msg_iov  = &iov;
+	msgh.msg_iovlen = 1;
+	msgh.msg_control = controlBuffer;
+	msgh.msg_controllen = sizeof( controlBuffer );
+	msgh.msg_flags = 0;
+
+  	len = recvmsg( n->sd, &msgh, 0 );
+
+	const cmsghdr* messageHeader = (const cmsghdr*)msgh.msg_control;
+	//We've requested the IP_RECVDSTADDR information, but lets check if that's what we actually got from it. This piece of code limits us receiving messages from addresses
+	//we dont want to receive the data from. If we didnt get the right information we cannot do this filtering, thus we'll be returning data for all interfaces.
+	if( messageHeader->cmsg_len == CMSG_LEN( sizeof( in_addr ) ) &&
+	    messageHeader->cmsg_level == IPPROTO_IP &&
+	    messageHeader->cmsg_type == IP_RECVDSTADDR )
+	{
+		//We should receive the original destination address after the message header.
+		const in_addr* destAddr = (const in_addr*)(controlBuffer + sizeof( cmsghdr ));
+		//Accept messages sent directly to us, and messages sent to our broadcast address. We've enabled broadcast support when creating
+		//the socket, but osx doesn't respect this with ip specific bindings so we have to do a global bind and manually filter for this.
+		if( destAddr->s_addr != n->state.ip_addr.s_addr && destAddr->s_addr != n->state.bcast_addr.s_addr )
+		{
+    		//printf( "discarding message with destination %s\n" , inet_ntoa( *destAddr ) );
+			p->length = 0;
+			return ARTNET_EOK;
+		}
+		else
+		{
+    		//printf( "accepting message with destination %s\n" , inet_ntoa( *destAddr ) );
+		}
+	}
+#endif
+	if( len < 0 )
+	{
+		artnet_error("Recvfrom error %s", artnet_net_last_error());
+		return ARTNET_ENET;
+	}
+
+  /**
+   * Why was this here in the original library code? It discards packets we receive from ourselves. There's nowhere in the spec
+   * saying that we should do this, in fact, the spec sais you need to reply to your own art polls which isn't done if these
+   * packets are discarded.
   if (cliAddr.sin_addr.s_addr == n->state.ip_addr.s_addr ||
       ntohl(cliAddr.sin_addr.s_addr) == LOOPBACK_IP) {
     p->length = 0;
     return ARTNET_EOK;
   }
-
+  */
   p->length = len;
   memcpy(&(p->from), &cliAddr.sin_addr, sizeof(struct in_addr));
   // should set to in here if we need it
@@ -718,8 +887,7 @@ int artnet_net_inet_aton(const char *ip_address, struct in_addr *address) {
   if (!inet_aton(ip_address, address)) {
 #else
   in_addr_t *addr = (in_addr_t*) address;
-  if ((*addr = inet_addr(ip_address)) == INADDR_NONE &&
-      strcmp(ip_address, "255.255.255.255")) {
+  if ((*addr = inet_addr(ip_address)) == INADDR_NONE) {
 #endif
     artnet_error("IP conversion from %s failed", ip_address);
     return ARTNET_EARG;
@@ -735,7 +903,7 @@ const char *artnet_net_last_error() {
 #ifdef WIN32
   static char error_str[10];
   int error = WSAGetLastError();
-  snprintf(error_str, sizeof(error_str), "%d", error);
+  sprintf_s(error_str, sizeof(error_str), "%d", error);
   return error_str;
 #else
   return strerror(errno);

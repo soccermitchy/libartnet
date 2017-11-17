@@ -18,6 +18,9 @@
  * Copyright (C) 2004-2005 Simon Newton
  */
 
+#include "stdafx.h"
+
+
 #include <stdarg.h>
 #include <stdio.h>
 #include "private.h"

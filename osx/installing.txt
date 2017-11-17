@@ -1,0 +1,10 @@
+To install artnet on OSX
+
+download page:
+http://code.google.com/p/linux-lighting/
+
+Easy way
+1) Install OLA Universal Binary and get .dylib and .a files from /usr/local/lib 
+   and include files from /usr/local/include/artnet
+   
+2) download artnet source code and follow instructions @ http://www.opendmx.net/index.php/Build_OLA_Mac_Packages or 

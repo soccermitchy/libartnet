@@ -18,6 +18,8 @@
  * Copyright (C) 2004-2005 Simon Newton
  */
 
+#include "stdafx.h"
+
 #include "private.h"
 
 /*
@@ -85,9 +87,8 @@ int artnet_tx_poll_reply(node n, int response) {
     reply.data.ar.goodoutput[i] = n->ports.out[i].port_status;
   }
 
-  snprintf((char *) &reply.data.ar.nodereport,
-           sizeof(reply.data.ar.nodereport),
-           "%04x [%04i] libartnet",
+  sprintf((char *) &reply.data.ar.nodereport,
+           "%04hx [%04i] libartnet",
            n->state.report_code,
            n->state.ar_count);
 

@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="artnet">
+      <UniqueIdentifier>{84bcde93-bfe4-4969-bc36-8110f815660e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="artnetWin32DLL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\artnet\artnet.h">
+      <Filter>artnet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\artnet\common.h">
+      <Filter>artnet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\artnet\defs.h">
+      <Filter>artnet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\artnet\misc.h">
+      <Filter>artnet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\artnet\packets.h">
+      <Filter>artnet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\artnet\private.h">
+      <Filter>artnet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\artnet\stdint.h">
+      <Filter>artnet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\artnet\tod.h">
+      <Filter>artnet</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\common\artnet\artnet.cpp">
+      <Filter>artnet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\artnet\misc.cpp">
+      <Filter>artnet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\artnet\network.cpp">
+      <Filter>artnet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\artnet\receive.cpp">
+      <Filter>artnet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\artnet\tod.cpp">
+      <Filter>artnet</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\artnet\transmit.cpp">
+      <Filter>artnet</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

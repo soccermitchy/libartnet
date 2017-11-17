@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup>
+    <PostBuildEvent />
+    <Link>
+      <AdditionalDependencies>$(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnetd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <CustomBuildStep>
+      <Command>echo Copy artnet library
+xcopy /D /Y $(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnetd.dll $(TargetDir)
+xcopy /D /Y $(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnetd.pdb $(TargetDir)
+%(Command)</Command>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Message>Copy ArtNet library</Message>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Outputs>$(TargetDir)artnetd.dll;$(TargetDir)artnetd.pdb;%(Outputs)</Outputs>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Inputs>$(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnetd.dll;$(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnetd.pdb;%(Inputs)</Inputs>
+    </CustomBuildStep>
+  </ItemDefinitionGroup>
+  <ItemGroup />
+</Project>
