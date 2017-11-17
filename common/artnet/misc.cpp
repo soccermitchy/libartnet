@@ -25,35 +25,38 @@
 #include <stdio.h>
 #include "private.h"
 
-// static buffer for the error strings
-char artnet_errstr[256];
+ // static buffer for the error strings
+char artnet_errstr[ 256 ];
 
 /*
  * Libartnet error function
  * This writes the error string to artnet_errstr, which can be accessed
  * using artnet_strerror();
  */
-void artnet_error(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  vsnprintf(artnet_errstr, sizeof(artnet_errstr), fmt, ap);
-  va_end(ap);
+void artnet_error( const char *fmt, ... )
+{
+	va_list ap;
+	va_start( ap, fmt );
+	vsnprintf( artnet_errstr, sizeof( artnet_errstr ), fmt, ap );
+	va_end( ap );
 }
 
 
 /*
  * Converts 4 bytes in big endian order to a 32 bit int
  */
-int32_t artnet_misc_nbytes_to_32(uint8_t bytes[4]) {
-  return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
+int32_t artnet_misc_nbytes_to_32( uint8_t bytes[ 4 ] )
+{
+	return (bytes[ 0 ] << 24) | (bytes[ 1 ] << 16) | (bytes[ 2 ] << 8) | bytes[ 3 ];
 }
 
 /*
  * Converts an int to an arrany of 4 bytes in big endian format
  */
-void artnet_misc_int_to_bytes(int data, uint8_t *bytes) {
-    bytes[3] = (data & 0x000000FF);
-    bytes[2] = (data & 0x0000FF00) >> 8;
-    bytes[1] = (data & 0x00FF0000) >> 16;
-    bytes[0] = (data & 0xFF000000) >> 24;
+void artnet_misc_int_to_bytes( int data, uint8_t *bytes )
+{
+	bytes[ 3 ] = (data & 0x000000FF);
+	bytes[ 2 ] = (data & 0x0000FF00) >> 8;
+	bytes[ 1 ] = (data & 0x00FF0000) >> 16;
+	bytes[ 0 ] = (data & 0xFF000000) >> 24;
 }

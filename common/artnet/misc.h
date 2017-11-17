@@ -24,10 +24,10 @@
 #include <errno.h>
 #include <string.h>
 
-extern char artnet_errstr[256];
-void artnet_error(const char *fmt, ...);
-int32_t artnet_misc_nbytes_to_32(uint8_t bytes[4]);
-void artnet_misc_int_to_bytes(int data, uint8_t *bytes);
+extern char artnet_errstr[ 256 ];
+void artnet_error( const char *fmt, ... );
+int32_t artnet_misc_nbytes_to_32( uint8_t bytes[ 4 ] );
+void artnet_misc_int_to_bytes( int data, uint8_t *bytes );
 
 // check if the node is null and return an error
 #define check_nullnode(node) if (node == NULL) { \
