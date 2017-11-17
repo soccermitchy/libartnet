@@ -977,12 +977,13 @@ int artnet_net_send( node n, artnet_packet p )
 	iov.iov_base = &p->data;
 
 	msghdr msgh;
+	char controlBuffer[ CMSG_LEN( sizeof( in_pktinfo ) ) ];
 	msgh.msg_name = (SA*)&addr;
 	msgh.msg_namelen = sizeof( addr );
 	msgh.msg_iov = &iov;
 	msgh.msg_iovlen = 1;
 	msgh.msg_controllen = CMSG_LEN( sizeof( in_pktinfo ) );
-	msgh.msg_control = new char[ msgh.msg_controllen ];
+	msgh.msg_control = controlBuffer;
 	msgh.msg_flags = 0;
 
 
