@@ -248,10 +248,19 @@ EXTERN int artnet_set_rdm_tod_handler(artnet_node vn,
   void *data);
 
 // send functions
+struct DmxPortStatus
+{
+	uint8_t type;
+	uint8_t inputStatus;
+	uint8_t outputStatus;
+	uint8_t swIn;
+	uint8_t swOut;
+};
 EXTERN int artnet_send_poll(artnet_node n,
   const char *ip,
   artnet_ttm_value_t talk_to_me);
 EXTERN int artnet_send_poll_reply(artnet_node n);
+EXTERN int artnet_send_poll_reply_resolume(artnet_node n, uint8_t subnet, DmxPortStatus status[ ARTNET_MAX_PORTS ]);
 EXTERN int artnet_send_dmx(artnet_node n,
   int port_id,
   int16_t length,

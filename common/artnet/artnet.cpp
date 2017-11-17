@@ -587,6 +587,43 @@ int artnet_send_poll_reply(artnet_node vn) {
 
   return artnet_tx_poll_reply(n, FALSE);
 }
+int artnet_send_poll_reply_resolume( artnet_node vn, uint8_t subnet, DmxPortStatus status[ ARTNET_MAX_PORTS ] )
+{
+	node n = (node)vn;
+	check_nullnode( vn );
+
+	if( n->state.mode != ARTNET_ON )
+		return ARTNET_EACTION;
+
+	artnet_packet_t reply;
+	n->state.ar_count++;
+
+	reply.to = n->state.reply_addr;
+	reply.type = ARTNET_REPLY;
+	reply.length = sizeof( artnet_reply_t );
+
+	// copy from a poll reply template
+	memcpy( &reply.data, &n->ar_temp, sizeof( artnet_reply_t ) );
+	reply.data.ar.numbports = 0;
+	reply.data.ar.sub = subnet;
+	for( size_t i = 0; i < ARTNET_MAX_PORTS; i++ )
+	{
+		if( status[ i ].type & 0xC0 )
+			reply.data.ar.numbports++;
+		reply.data.ar.porttypes[ i ] = status[ i ].type;
+		reply.data.ar.goodinput[ i ] = status[ i ].inputStatus;
+		reply.data.ar.goodoutput[ i ] = status[ i ].outputStatus;
+		reply.data.ar.swin[ i ] = status[ i ].swIn;
+		reply.data.ar.swout[ i ] = status[ i ].swOut;
+	}
+
+	sprintf( (char *)&reply.data.ar.nodereport,
+		"%04hx [%04i] libartnet",
+		n->state.report_code,
+		n->state.ar_count );
+
+	return artnet_net_send( n, &reply );
+}
 
 
 /*
