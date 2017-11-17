@@ -179,19 +179,17 @@ int artnet_tx_tod_data( node n, int id )
 
 	while( remaining > 0 )
 	{
-		memset( &tod.data.toddata.tod, 0x00, ARTNET_MAX_UID_COUNT );
 		lim = min( ARTNET_MAX_UID_COUNT, remaining );
 		tod.data.toddata.blockCount = bloc++;
 		tod.data.toddata.uidCount = lim;
 
 		offset = (n->ports.out[ id ].port_tod.length - remaining) * ARTNET_RDM_UID_WIDTH;
 		if( n->ports.out[ id ].port_tod.data != NULL )
-			memcpy( tod.data.toddata.tod,
-				n->ports.out[ id ].port_tod.data + offset,
-				lim * ARTNET_RDM_UID_WIDTH );
+			memcpy( tod.data.toddata.tod, n->ports.out[ id ].port_tod.data + offset, lim * ARTNET_RDM_UID_WIDTH );
 
 		ret = ret || artnet_net_send( n, &tod );
 		remaining = remaining - lim;
+		memset( tod.data.toddata.tod, 0, lim * ARTNET_RDM_UID_WIDTH );
 	}
 	return ret;
 }

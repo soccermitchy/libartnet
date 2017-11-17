@@ -57,6 +57,8 @@ LPFN_WSASENDMSG WSASendMSG = NULL;
 #include <linux/if_packet.h>
 #endif
 
+#include <string.h>
+
 
 enum
 {
@@ -531,7 +533,11 @@ int artnet_net_init( node n, const char* filterAdapter )
 
 	if( filterAdapter )
 	{
-		memcpy( n->filterAdapter, filterAdapter, strlen( filterAdapter ) );
+#ifdef WIN32
+		strcpy_s( n->filterAdapter, sizeof( n->filterAdapter ), filterAdapter );
+#else
+		strcpy( n->filterAdapter, filterAdapter );
+#endif
 
 		for( size_t index = 0; index < interfaces.size(); ++index )
 		{
@@ -775,6 +781,7 @@ int artnet_net_recv( node n, artnet_packet p, int delay )
 
 	SOCKADDR_STORAGE addrbuf;
 
+	CHAR controlBuffer[WSA_CMSG_LEN( sizeof( buffer ) )];
 	WSAMSG msg;
 	msg.dwFlags = 0;
 	msg.name = (SA*)&cliAddr;
@@ -782,7 +789,7 @@ int artnet_net_recv( node n, artnet_packet p, int delay )
 	msg.lpBuffers = &buffer;
 	msg.dwBufferCount = 1;
 	msg.Control.len = WSA_CMSG_LEN( sizeof( buffer ) );
-	msg.Control.buf = new CHAR[ msg.Control.len ];
+	msg.Control.buf = controlBuffer;
 
 	DWORD sizeRecvd = 0;
 	int result = WSARecvMSG( n->sd, &msg, &sizeRecvd, NULL, NULL );
@@ -934,13 +941,14 @@ int artnet_net_send( node n, artnet_packet p )
 	buffer.len = p->length;
 	buffer.buf = (CHAR*)&p->data;
 
+	CHAR controlBuffer[WSA_CMSG_LEN( sizeof( buffer ) )];
 	WSAMSG msg;
 	msg.name = (SA*)&addr;
 	msg.namelen = sizeof( addr );
 	msg.lpBuffers = &buffer;
 	msg.dwBufferCount = 1;
 	msg.Control.len = WSA_CMSG_LEN( sizeof( buffer ) );
-	msg.Control.buf = new CHAR[ msg.Control.len ];
+	msg.Control.buf = controlBuffer;
 	msg.dwFlags = 0;
 
 	WSACMSGHDR* msghdr = WSA_CMSG_FIRSTHDR( &msg );
