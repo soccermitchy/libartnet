@@ -9,7 +9,8 @@
       <AdditionalDependencies>$(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnetd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
-      <Command>echo Copy artnet library
+      <Command>rem IncrediBuild_AllowOverlap
+echo Copy artnet library
 xcopy /D /Y "$(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnetd.dll" "$(TargetDir)"
 xcopy /D /Y "$(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnetd.pdb" "$(TargetDir)"
 %(Command)</Command>
