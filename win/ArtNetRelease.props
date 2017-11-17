@@ -10,8 +10,8 @@
     </Link>
     <CustomBuildStep>
       <Command>echo Copy artnet library
-xcopy /D /Y $(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnet.dll $(TargetDir)
-xcopy /D /Y $(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnet.pdb $(TargetDir)
+xcopy /D /Y "$(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnet.dll" "$(TargetDir)"
+xcopy /D /Y "$(MSBuildThisFileDirectory)bin\$(PlatformTarget)\artnet.pdb" "$(TargetDir)"
 %(Command)</Command>
     </CustomBuildStep>
     <CustomBuildStep>
