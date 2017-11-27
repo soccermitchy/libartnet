@@ -802,7 +802,7 @@ const static std::vector<struct sockaddr_in*> local_addresses = []()
     getifaddrs(&ifap);
     for (ifa = ifap; ifa; ifa = ifa->ifa_next)
         if (ifa->ifa_addr->sa_family==AF_INET)
-            result.push_back((struct sockaddr_in *)ifa->ifa_addr);
+            result.push_back((struct sockaddr_in*)ifa->ifa_addr);
     freeifaddrs(ifap);
 	return std::move(result);
 }();
