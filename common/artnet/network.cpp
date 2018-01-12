@@ -59,6 +59,7 @@ LPFN_WSASENDMSG WSASendMSG = NULL;
 #include <linux/if_packet.h>
 #endif
 
+#include <functional>
 #include <algorithm>
 #include <string>
 #include <string.h>
@@ -102,39 +103,39 @@ iface_t* new_iface( std::vector< iface_t >& list )
 
 
 #ifdef WIN32
-int enumerateInterfaces(std::vector<iface_t>& interfaces)
+int enumerateInterfaces( std::vector<iface_t>& interfaces )
 {
 	int ret = ARTNET_EOK;
 
 	PIP_ADAPTER_INFO pAdapterInfo;
 	PIP_ADAPTER_INFO pAdapter = NULL;
 	DWORD dwRetVal = 0;
-	ULONG ulOutBufLen = sizeof(IP_ADAPTER_INFO);
+	ULONG ulOutBufLen = sizeof( IP_ADAPTER_INFO );
 
-	pAdapterInfo = (IP_ADAPTER_INFO *)malloc(sizeof(IP_ADAPTER_INFO));
-	if (pAdapterInfo == NULL)
+	pAdapterInfo = (IP_ADAPTER_INFO *)malloc( sizeof( IP_ADAPTER_INFO ) );
+	if( pAdapterInfo == NULL )
 	{
-		artnet_error("%s : Error allocating memory needed to call GetAdaptersinfo", __FUNCTION__);
+		artnet_error( "%s : Error allocating memory needed to call GetAdaptersinfo", __FUNCTION__ );
 		return ARTNET_EMEM;
 	}
 
 	// Make an initial call to GetAdaptersInfo to get
 	// the necessary size into the ulOutBufLen variable
-	if (GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW)
+	if( GetAdaptersInfo( pAdapterInfo, &ulOutBufLen ) == ERROR_BUFFER_OVERFLOW )
 	{
-		free(pAdapterInfo);
-		pAdapterInfo = (IP_ADAPTER_INFO *)malloc(ulOutBufLen);
-		if (pAdapterInfo == NULL)
+		free( pAdapterInfo );
+		pAdapterInfo = (IP_ADAPTER_INFO *)malloc( ulOutBufLen );
+		if( pAdapterInfo == NULL )
 		{
-			artnet_error("%s : Error allocating memory needed to call GetAdaptersinfo", __FUNCTION__);
+			artnet_error( "%s : Error allocating memory needed to call GetAdaptersinfo", __FUNCTION__ );
 			return ARTNET_EMEM;
 		}
 	}
 
-	if ((dwRetVal = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen)) == NO_ERROR)
+	if( (dwRetVal = GetAdaptersInfo( pAdapterInfo, &ulOutBufLen )) == NO_ERROR )
 	{
 		pAdapter = pAdapterInfo;
-		while (pAdapter)
+		while( pAdapter )
 		{
 			unsigned long net, mask;
 
@@ -204,22 +205,22 @@ int enumerateInterfaces(std::vector<iface_t>& interfaces)
 				printf("\n");
 				*/
 
-			iface_t* ift = new_iface(interfaces);
-			if (ift == NULL)
+			iface_t* ift = new_iface( interfaces );
+			if( ift == NULL )
 			{
-				artnet_error("%s : calloc error %s", __FUNCTION__, strerror(errno));
+				artnet_error( "%s : calloc error %s", __FUNCTION__, strerror( errno ) );
 				ret = ARTNET_EMEM;
 				goto nextAdapter;
 			}
 
-			net = inet_addr(pAdapter->IpAddressList.IpAddress.String);
-			mask = inet_addr(pAdapter->IpAddressList.IpMask.String);
+			net = inet_addr( pAdapter->IpAddressList.IpAddress.String );
+			mask = inet_addr( pAdapter->IpAddressList.IpMask.String );
 
-			strncpy(ift->if_name, pAdapter->AdapterName, sizeof(ift->if_name));
-			if_indextoname(pAdapter->Index, ift->if_name);
+			strncpy( ift->if_name, pAdapter->AdapterName, sizeof( ift->if_name ) );
+			if_indextoname( pAdapter->Index, ift->if_name );
 			ift->if_index = pAdapter->Index;
 
-			memcpy(ift->hw_addr, pAdapter->Address, ARTNET_MAC_SIZE);
+			memcpy( ift->hw_addr, pAdapter->Address, ARTNET_MAC_SIZE );
 			ift->ip_addr.sin_addr.s_addr = net;
 			ift->bcast_addr.sin_addr.s_addr = ((net & mask) | (0xFFFFFFFF ^ mask));
 
@@ -229,25 +230,24 @@ int enumerateInterfaces(std::vector<iface_t>& interfaces)
 
 		//RESOLUME: Localhost loopback interface
 		{
-			iface_t* localhost_interface = new_iface(interfaces);
-			if (localhost_interface == NULL)
+			iface_t* localhost_interface = new_iface( interfaces );
+			if( localhost_interface == NULL )
 			{
-				artnet_error("%s : calloc error %s", __FUNCTION__, strerror(errno));
+				artnet_error( "%s : calloc error %s", __FUNCTION__, strerror( errno ) );
 				ret = ARTNET_EMEM;
 			}
 			else
 			{
-				const char* address = "127.0.0.1";
-				unsigned long net = inet_addr(address);
-				unsigned long mask = inet_addr("255.0.0.0");
-				unsigned long broadcast = inet_addr("127.0.0.1");
-				unsigned long localHostIndex = 0;
+				unsigned long net = inet_addr( "127.0.0.1" );
+				unsigned long mask = inet_addr( "255.0.0.0" );
+				unsigned long broadcast = inet_addr( "127.255.255.255" );
 
-				strncpy(localhost_interface->if_name, "Localhost", sizeof(localhost_interface->if_name));
-				if_indextoname(localHostIndex, localhost_interface->if_name);
-				localhost_interface->if_index = localHostIndex;
+				strncpy( localhost_interface->if_name, "Localhost", sizeof( localhost_interface->if_name ) );
+				//Localhost is not an adapter so it doesn't have an index.
+				localhost_interface->if_index = -1;
+				//Localhost is not an adapter so it doesn't have a mac address.
+				memset( localhost_interface->hw_addr, 0, ARTNET_MAC_SIZE );
 
-				memcpy(localhost_interface->hw_addr, address, ARTNET_MAC_SIZE);
 				localhost_interface->ip_addr.sin_addr.s_addr = net;
 				localhost_interface->bcast_addr.sin_addr.s_addr = broadcast;
 			}
@@ -255,10 +255,10 @@ int enumerateInterfaces(std::vector<iface_t>& interfaces)
 	}
 	else
 	{
-		printf("GetAdaptersInfo failed with error: %d\n", (int)dwRetVal);
+		printf( "GetAdaptersInfo failed with error: %d\n", (int)dwRetVal );
 	}
-	if (pAdapterInfo)
-		free(pAdapterInfo);
+	if( pAdapterInfo )
+		free( pAdapterInfo );
 
 	return ret;
 }
@@ -449,14 +449,11 @@ int enumerateInterfaces( std::vector< iface_t >& interfaces )
 		if( (flags & IFF_UP) == 0 )
 			continue; //skip down interfaces
 
-		if( (flags & IFF_LOOPBACK) )
-			continue; //skip lookback
-
 		iface_t* iface = new_iface( interfaces );
 		if( !iface )
 			goto e_free_list;
 
-		sin = (sockaddr_in *) &ifr->ifr_addr;
+		sin = (sockaddr_in *)&ifr->ifr_addr;
 		iface->ip_addr.sin_addr = sin->sin_addr;
 
 		strncpy( iface->if_name, ifr->ifr_name, sizeof( iface->if_name ) );
@@ -495,32 +492,6 @@ int enumerateInterfaces( std::vector< iface_t >& interfaces )
 		 * and hware addresses
 		 * i'll leave that for another day
 		 */
-	}
-
-	//RESOLUME: Localhost loopback interface
-	{
-		iface_t* localhost_interface = new_iface(interfaces);
-		if (localhost_interface == NULL)
-		{
-			artnet_error("%s : calloc error %s", __FUNCTION__, strerror(errno));
-			ret = ARTNET_EMEM;
-		}
-		else
-		{
-			const char* address = "127.0.0.1";
-			unsigned long net = inet_addr(address);
-			unsigned long mask = inet_addr("255.0.0.0");
-			unsigned long broadcast = inet_addr("127.0.0.1");
-			unsigned long localHostIndex = 0;
-
-			strncpy(localhost_interface->if_name, "Localhost", sizeof(localhost_interface->if_name));
-			if_indextoname(localHostIndex, localhost_interface->if_name);
-			localhost_interface->if_index = localHostIndex;
-
-			memcpy(localhost_interface->hw_addr, address, ARTNET_MAC_SIZE);
-			localhost_interface->ip_addr.sin_addr.s_addr = net;
-			localhost_interface->bcast_addr.sin_addr.s_addr = broadcast;
-		}
 	}
 
 	free( buf );
@@ -711,7 +682,12 @@ int artnet_net_start( node n )
 	memset( &servAddr, 0x00, sizeof( servAddr ) );
 	servAddr.sin_family = AF_INET;
 	servAddr.sin_port = htons( ARTNET_PORT );
-	servAddr.sin_addr.s_addr = htonl( INADDR_ANY );
+	/**
+	 * For localhost listening we have to bind explicitly to the loopback address because otherwise we dont
+	 * get any messages. For actual adapters we're binding to ANY address so that we can do the filtering when
+	 * we receive the message. This way the ip for the selected adapter can change on the fly and we will still be receiving from it.
+	 */
+	servAddr.sin_addr.s_addr = htonl( n->state.ip_addr.s_addr == htonl( INADDR_LOOPBACK ) ? INADDR_LOOPBACK : INADDR_ANY );
 #if defined( WIN32 )
 	//On windows we can bind the socket to the desired adapter and still receive broadcasts if we enable them. On osx though we no longer
 	//get broadcasts, even though we enable them. For that reason we have to bind to any on osx and manually filter.
@@ -757,7 +733,7 @@ int artnet_net_start( node n )
 		printf( "Binding to %s \n", inet_ntoa( servAddr.sin_addr ) );
 
 	// bind sockets
-	if( bind( sock, (SA *)&servAddr, sizeof( servAddr ) ) == -1 )
+	if( bind( sock, (SA*)&servAddr, sizeof( servAddr ) ) != 0 )
 	{
 		artnet_error( "Failed to bind to socket: %s", artnet_net_last_error() );
 		artnet_net_close( sock );
@@ -780,76 +756,48 @@ int artnet_net_start( node n )
 	return ARTNET_EOK;
 }
 
-
-#if defined(WIN32)
-const static std::vector<struct sockaddr_in*> local_addresses = []()
+std::string toIP( sockaddr* sockAddr )
 {
-	std::vector<sockaddr_in*> result;
-	struct addrinfo* local_address_info = NULL;
-	getaddrinfo("localhost", NULL, NULL, &local_address_info);
-	struct addrinfo *address_it;
-	for (address_it = local_address_info; address_it != NULL; address_it = address_it->ai_next)
-		result.push_back((struct sockaddr_in*)address_it->ai_addr);
-	return std::move(result);
-}();
-#else
-const static std::vector<struct sockaddr_in*> local_addresses = []()
-{
-	std::vector<sockaddr_in*> result;
-	struct ifaddrs *ifap, *ifa;
-    struct sockaddr_in *sa;
-    char *addr;
-    getifaddrs(&ifap);
-    for (ifa = ifap; ifa; ifa = ifa->ifa_next)
-        if (ifa->ifa_addr->sa_family==AF_INET)
-            result.push_back((struct sockaddr_in*)ifa->ifa_addr);
-    freeifaddrs(ifap);
-	return std::move(result);
-}();
-#endif
-
-std::string toIP(sockaddr* sockAddr)
-{
-	char charIPAddress[NI_MAXHOST];
+	char charIPAddress[ NI_MAXHOST ];
 	sockaddr_storage* sendAddr = (sockaddr_storage*)&sockAddr;
 
 	//IP 4 or 6?
 	sendAddr->ss_family == AF_INET ?
-		inet_ntop(AF_INET, &((sockaddr_in*)&sockAddr)->sin_addr, charIPAddress, NI_MAXHOST) :
-		inet_ntop(AF_INET6, &((sockaddr_in6*)&sockAddr)->sin6_addr, charIPAddress, NI_MAXHOST);
+		inet_ntop( AF_INET, &((sockaddr_in*)&sockAddr)->sin_addr, charIPAddress, NI_MAXHOST ) :
+		inet_ntop( AF_INET6, &((sockaddr_in6*)&sockAddr)->sin6_addr, charIPAddress, NI_MAXHOST );
 
-	return std::string(charIPAddress);
+	return std::string( charIPAddress );
 }
 
 /*
  * Receive a packet.
  */
-int artnet_net_recv(node n, artnet_packet p, int delay)
+int artnet_net_recv( node n, artnet_packet p, int delay )
 {
 	ptrdiff_t len;
-	struct sockaddr_in cliAddr;
-	socklen_t cliLen = sizeof(cliAddr);
+	sockaddr_in cliAddr;
+	socklen_t cliLen = sizeof( cliAddr );
 	fd_set rset;
 	struct timeval tv;
 	int maxfdp1 = n->sd + 1;
 
-	FD_ZERO(&rset);
-	FD_SET((unsigned int)n->sd, &rset);
+	FD_ZERO( &rset );
+	FD_SET( (unsigned int)n->sd, &rset );
 
 	tv.tv_usec = 0;
 	tv.tv_sec = delay;
 	p->length = 0;
 
-	switch (select(maxfdp1, &rset, NULL, NULL, &tv))
+	switch( select( maxfdp1, &rset, NULL, NULL, &tv ) )
 	{
 	case 0:
 		// timeout
 		return RECV_NO_DATA;
 		break;
 	case -1:
-		if (errno != EINTR)
+		if( errno != EINTR )
 		{
-			artnet_error("Select error %s", artnet_net_last_error());
+			artnet_error( "Select error %s", artnet_net_last_error() );
 			return ARTNET_ENET;
 		}
 		return ARTNET_EOK;
@@ -871,13 +819,21 @@ int artnet_net_recv(node n, artnet_packet p, int delay)
 	 *
 	len = recvfrom( n->sd, (char*) &(p->data), sizeof( p->data ), 0, (SA*)&cliAddr, &cliLen );
 	 */
+	std::function< bool() > acceptAsLocalhost = [ & ](){
+		if( strcmp( n->filterAdapter, "Localhost" ) != 0 )
+			return false;
+
+		return *reinterpret_cast< uint8_t* >( &cliAddr.sin_addr.s_addr ) == 127;
+		//return cliAddr.sin_addr.s_net == 127;
+	};
+
 #if defined( WIN32 )
 	WSABUF buffer;
 	buffer.len = sizeof( p->data );
 	buffer.buf = (CHAR*)&p->data;
 
 	SOCKADDR_STORAGE addrbuf;
-	CHAR controlBuffer[WSA_CMSG_LEN( sizeof( buffer ) )];
+	CHAR controlBuffer[ WSA_CMSG_LEN( sizeof( buffer ) ) ];
 	WSAMSG msg;
 	msg.dwFlags = 0;
 	msg.name = (SA*)&cliAddr;
@@ -890,31 +846,19 @@ int artnet_net_recv(node n, artnet_packet p, int delay)
 	DWORD sizeRecvd = 0;
 	int result = WSARecvMSG( n->sd, &msg, &sizeRecvd, NULL, NULL );
 
-	const bool from_local = [&]()
-	{
-		if (strcmp(n->filterAdapter, "Localhost") != 0)
-			return false;
-		for (struct sockaddr_in* local_addr : local_addresses)
-			if (cliAddr.sin_addr.s_addr == local_addr->sin_addr.s_addr)
-				return true;
-		if ((*reinterpret_cast<char*>(&cliAddr.sin_addr.s_addr)) == 127)
-			return true;
-		return false;
-	}();
-
-	if (result == 0)
+	if( result == 0 )
 	{
 		WSACMSGHDR* msghdr = NULL;
-		while (msghdr = WSA_CMSG_NXTHDR(&msg, msghdr))
+		while( msghdr = WSA_CMSG_NXTHDR( &msg, msghdr ) )
 		{
-			switch (msghdr->cmsg_type)
+			switch( msghdr->cmsg_type )
 			{
 			case IP_PKTINFO:
 			{
-				//assert( addrbuf.ss_family == AF_INET );
-				in_pktinfo* pktinfo = (in_pktinfo*)WSA_CMSG_DATA(msghdr);
+				in_pktinfo* pktinfo = (in_pktinfo*)WSA_CMSG_DATA( msghdr );
 				len = sizeRecvd;
-				if (!isInputFromAdapterAllowed(pktinfo->ipi_ifindex, n->filterAdapter) && !from_local)
+				//Check from_local first becauseif we're on the localhost adapter the interface index is irrelevant.
+				if( !acceptAsLocalhost() && !isInputFromAdapterAllowed( pktinfo->ipi_ifindex, n->filterAdapter ) )
 				{
 					p->length = 0;
 					return ARTNET_EOK;
@@ -948,18 +892,6 @@ int artnet_net_recv(node n, artnet_packet p, int delay)
 
 	len = recvmsg( n->sd, &msgh, 0 );
 
-	const bool from_local = [&]()
-	{
-		if (strcmp(n->filterAdapter, "Localhost") != 0)
-			return false;
-		for (struct sockaddr_in* local_addr : local_addresses)
-			if (cliAddr.sin_addr.s_addr == local_addr->sin_addr.s_addr)
-				return true;
-		if ((*reinterpret_cast<char*>(&cliAddr.sin_addr.s_addr)) == 127)
-			return true;
-		return false;
-	}();
-
 	const cmsghdr* messageHeader = (const cmsghdr*)msgh.msg_control;
 	//We've requested the IP_RECVPKTINFO information, but lets check if that's what we actually got from it. This piece of code limits us receiving messages on the adapter
 	//we want to receive the data from. If we didnt get the right information we cannot do this filtering, thus we'll be returning data for all interfaces.
@@ -969,7 +901,8 @@ int artnet_net_recv(node n, artnet_packet p, int delay)
 	{
 		//We should receive the packet info after the message header.
 		const in_pktinfo* packetInfo = (const in_pktinfo*)(controlBuffer + sizeof( cmsghdr ));
-		if( !isInputFromAdapterAllowed( packetInfo->ipi_ifindex, n->filterAdapter ) && !from_local)
+		//Check from_local first becauseif we're on the localhost adapter the interface index is irrelevant.
+		if( !acceptAsLocalhost() && !isInputFromAdapterAllowed( packetInfo->ipi_ifindex, n->filterAdapter ) )
 		{
 			p->length = 0;
 			return ARTNET_EOK;
@@ -1002,7 +935,7 @@ int artnet_net_recv(node n, artnet_packet p, int delay)
 /*
  * Send a packet.
  */
-int artnet_net_send(node n, artnet_packet p)
+int artnet_net_send( node n, artnet_packet p )
 {
 	struct sockaddr_in addr;
 	int ret;
@@ -1013,64 +946,54 @@ int artnet_net_send(node n, artnet_packet p)
 	 * message to update our node's state. The poll is sent at an interval so after a change has occurred it will only take so long
 	 * for us to notice it.
 	 */
-	if (p->data.ap.opCode == htols(ARTNET_POLL))
+	if( p->data.ap.opCode == htols( ARTNET_POLL ) )
 	{
 		std::vector< iface_t > interfaces;
-		enumerateInterfaces(interfaces);
+		enumerateInterfaces( interfaces );
 
-		for (size_t index = 0; index < interfaces.size(); ++index)
+		for( size_t index = 0; index < interfaces.size(); ++index )
 		{
-			if (strcmp(interfaces[index].if_name, n->filterAdapter) == 0)
+			if( strcmp( interfaces[ index ].if_name, n->filterAdapter ) == 0 )
 			{
-				if (memcmp(&n->state.ip_addr, &interfaces[index].ip_addr.sin_addr, sizeof(n->state.ip_addr)) != 0 ||
-					memcmp(&n->state.bcast_addr, &interfaces[index].bcast_addr.sin_addr, sizeof(n->state.bcast_addr)) != 0 ||
-					memcmp(&n->state.hw_addr, &interfaces[index].hw_addr, ARTNET_MAC_SIZE) != 0)
+				if( memcmp( &n->state.ip_addr, &interfaces[ index ].ip_addr.sin_addr, sizeof( n->state.ip_addr ) ) != 0 ||
+				    memcmp( &n->state.bcast_addr, &interfaces[ index ].bcast_addr.sin_addr, sizeof( n->state.bcast_addr ) ) != 0 ||
+				    memcmp( &n->state.hw_addr, &interfaces[ index ].hw_addr, ARTNET_MAC_SIZE ) != 0 )
 				{
-					n->state.ip_addr = interfaces[index].ip_addr.sin_addr;
-					n->state.bcast_addr = interfaces[index].bcast_addr.sin_addr;
-					memcpy(&n->state.hw_addr, &interfaces[index].hw_addr, ARTNET_MAC_SIZE);
+					n->state.ip_addr = interfaces[ index ].ip_addr.sin_addr;
+					n->state.bcast_addr = interfaces[ index ].bcast_addr.sin_addr;
+					memcpy( &n->state.hw_addr, &interfaces[ index ].hw_addr, ARTNET_MAC_SIZE );
 					//The ip is also stored in the poll reply as callback ip so we have to rebuild the
 					//reply for it to be updated with this new ip.
-					artnet_tx_build_art_poll_reply(n);
+					artnet_tx_build_art_poll_reply( n );
 				}
 				break;
 			}
 		}
 	}
 
-	if (n->state.mode != ARTNET_ON)
+	if( n->state.mode != ARTNET_ON )
 		return ARTNET_EACTION;
 
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(ARTNET_PORT);
+	addr.sin_port = htons( ARTNET_PORT );
 	addr.sin_addr = p->to;
 	p->from = n->state.ip_addr;
 
-	if (n->state.verbose)
-		printf("sending to %s\n", inet_ntoa(addr.sin_addr));
+	if( n->state.verbose )
+		printf( "sending to %s\n", inet_ntoa( addr.sin_addr ) );
 
-	const bool localhost_selected = strcmp(n->filterAdapter, "Localhost") == 0;
-
-	const bool to_local_addr = [&]()
-	{
-		if (*reinterpret_cast<char*>(&addr.sin_addr.s_addr) == 127)
-			return true;
-		for (struct sockaddr_in* local_addr : local_addresses)
-			if (addr.sin_addr.s_addr == local_addr->sin_addr.s_addr)
-				return true;
-		return false;
-	}();
+	bool localhost_selected = strcmp( n->filterAdapter, "Localhost" ) == 0;
 
 #if defined(WIN32)
-	if (localhost_selected)
+	if( localhost_selected )
 	{
 		/*
 			This is the library's original way of sending data.
 			We now use this to send over localhost since we don't care
 			over which adapter we send on localhost.
 		*/
-		if (to_local_addr)
-			ret = sendto(n->sd, (char*)&p->data, p->length, 0, (SA*)&addr, sizeof(addr));
+		if( addr.sin_addr.s_net == 127 )
+			ret = sendto( n->sd, (char*)&p->data, p->length, 0, (SA*)&addr, sizeof( addr ) );
 		else
 			ret = -1;
 	}
@@ -1078,36 +1001,36 @@ int artnet_net_send(node n, artnet_packet p)
 	{
 		/*
 			To send data that is not purposed for local host we will be
-			using a specific adapter so we need to use sendmsg and provide 
-			the packet info containing which interface and ip should be 
+			using a specific adapter so we need to use sendmsg and provide
+			the packet info containing which interface and ip should be
 			used to send the data.
 		*/
 		WSABUF buffer;
 		buffer.len = p->length;
 		buffer.buf = (CHAR*)&p->data;
 
-		CHAR controlBuffer[WSA_CMSG_LEN(sizeof(buffer))];
+		CHAR controlBuffer[ WSA_CMSG_LEN( sizeof( buffer ) ) ];
 		WSAMSG msg;
 		msg.name = (SA*)&addr;
-		msg.namelen = sizeof(addr);
+		msg.namelen = sizeof( addr );
 		msg.lpBuffers = &buffer;
 		msg.dwBufferCount = 1;
-		msg.Control.len = WSA_CMSG_LEN(sizeof(buffer));
+		msg.Control.len = WSA_CMSG_LEN( sizeof( buffer ) );
 		msg.Control.buf = controlBuffer;
 		msg.dwFlags = 0;
 
-		WSACMSGHDR* msghdr = WSA_CMSG_FIRSTHDR(&msg);
+		WSACMSGHDR* msghdr = WSA_CMSG_FIRSTHDR( &msg );
 		msghdr->cmsg_len = msg.Control.len;
 		msghdr->cmsg_level = IPPROTO_IP;
 		msghdr->cmsg_type = IP_PKTINFO;
 
-		in_pktinfo* pktinfo = (in_pktinfo*)WSA_CMSG_DATA(msghdr);
+		in_pktinfo* pktinfo = (in_pktinfo*)WSA_CMSG_DATA( msghdr );
 		pktinfo->ipi_addr = n->state.ip_addr;
-		pktinfo->ipi_ifindex = if_nametoindex(n->filterAdapter);
+		pktinfo->ipi_ifindex = if_nametoindex( n->filterAdapter );
 
 		DWORD sizeToSend = p->length;
-		const int result = WSASendMsg(n->sd, &msg, 0, &sizeToSend, NULL, NULL);
-		if (result == 0)
+		const int result = WSASendMsg( n->sd, &msg, 0, &sizeToSend, NULL, NULL );
+		if( result == 0 )
 		{
 			ret = sizeToSend;
 		}
@@ -1144,35 +1067,29 @@ int artnet_net_send(node n, artnet_packet p)
 	packetInfo->ipi_spec_dst = n->state.ip_addr;
 	packetInfo->ipi_ifindex = if_nametoindex( n->filterAdapter );
 
-	const bool valid_target = [&](){
-		if(localhost_selected)
-			return to_local_addr;
-		else
-			return true;
-	}();
-
-	if (valid_target)
+	bool valid_target = localhost_selected ? *reinterpret_cast< uint8_t* >( &addr.sin_addr.s_addr ) == 127 : true;
+	if( valid_target )
 		ret = sendmsg( n->sd, &msgh, 0 );
 
 #endif
 
-	if (ret == -1)
+	if( ret == -1 )
 	{
-		artnet_error("sendmsg failed: %s", artnet_net_last_error());
+		artnet_error( "sendmsg failed: %s", artnet_net_last_error() );
 		n->state.report_code = ARTNET_RCUDPFAIL;
 		return ARTNET_ENET;
 	}
-	else if (p->length != ret)
+	else if( p->length != ret )
 	{
-		artnet_error("failed to send full datagram");
+		artnet_error( "failed to send full datagram" );
 		n->state.report_code = ARTNET_RCSOCKETWR1;
 		return ARTNET_ENET;
 	}
 
-	if (n->callbacks.send.fh)
+	if( n->callbacks.send.fh )
 	{
-		get_type(p);
-		n->callbacks.send.fh(n, p, n->callbacks.send.data);
+		get_type( p );
+		n->callbacks.send.fh( n, p, n->callbacks.send.data );
 	}
 	return ARTNET_EOK;
 }
