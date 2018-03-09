@@ -596,8 +596,8 @@ int artnet_net_init( node n, const char* filterAdapter )
 	{
 		if( !interfaces.empty() )
 		{
-			// pick first address
-			// copy ip address, bcast address and hardware address
+			// pick first public address
+			//std::stable_sort( interfaces.begin(), interfaces.end(), []( const iface_t& a, const iface_t& b ){ return a.bcast_addr.sin_addr.s_addr != 0 || b.bcast_addr.sin_addr.s_addr == 0; } );
 
 			n->state.ip_addr = interfaces[ 0 ].ip_addr.sin_addr;
 			n->state.bcast_addr = interfaces[ 0 ].bcast_addr.sin_addr;
