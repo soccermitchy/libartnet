@@ -415,7 +415,7 @@ int enumerateInterfaces( std::vector< iface_t >& interfaces )
 
 		// work out length here
 #ifdef HAVE_SOCKADDR_SA_LEN
-		len = std::max( (std::uint8_t)sizeof( struct sockaddr ), ifr->ifr_addr.sa_len );
+		len = std::max( (uint8_t)sizeof( struct sockaddr ), ifr->ifr_addr.sa_len );
 #else
 		switch( ifr->ifr_addr.sa_family )
 		{
