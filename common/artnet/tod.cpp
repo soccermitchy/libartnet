@@ -18,7 +18,7 @@
  * Copyright (C) 2004-2005 Simon Newton
  */
 #ifdef WIN32
-#include "stdafx.h"
+//#include "stdafx.h"
 #endif
 
 #include <stdlib.h>

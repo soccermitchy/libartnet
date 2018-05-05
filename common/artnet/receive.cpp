@@ -18,7 +18,7 @@
  * Copyright (C) 2004-2007 Simon Newton
  */
 
-#include "stdafx.h"
+//#include "stdafx.h"
 
 
 #include "private.h"
