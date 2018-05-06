@@ -87,13 +87,15 @@ extern uint16_t HIGH_BYTE;
 #define SA struct sockaddr
 #define SI struct in_addr
 
-#ifndef min
-#define min(a, b) ((a) < (b) ? (a) : (b))
-#endif
+// #undef min
+// #undef max
+// #ifndef min
+// #define min(a, b) ((a) < (b) ? (a) : (b))
+// #endif
 
-#ifndef max
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#endif
+// #ifndef max
+// #define max(a, b) ((a) > (b) ? (a) : (b))
+// #endif
 
 #ifndef INVALID_SOCKET
 #define INVALID_SOCKET -1

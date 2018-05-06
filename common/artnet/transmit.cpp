@@ -21,7 +21,7 @@
 //#include "stdafx.h"
 
 #include "private.h"
-
+#include "minmax.h"
  /*
   * Send an art poll
   *

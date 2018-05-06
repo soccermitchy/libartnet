@@ -897,7 +897,7 @@ int artnet_net_recv( node n, artnet_packet p, int delay )
 	//we want to receive the data from. If we didnt get the right information we cannot do this filtering, thus we'll be returning data for all interfaces.
 	if( messageHeader->cmsg_len == CMSG_LEN( sizeof( in_pktinfo ) ) &&
 		messageHeader->cmsg_level == IPPROTO_IP &&
-		messageHeader->cmsg_type == IP_RECVPKTINFO )
+		messageHeader->cmsg_type == IPV6_RECVPKTINFO )
 	{
 		//We should receive the packet info after the message header.
 		const in_pktinfo* packetInfo = (const in_pktinfo*)(controlBuffer + sizeof( cmsghdr ));

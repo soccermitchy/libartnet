@@ -20,9 +20,8 @@
 
 //#include "stdafx.h"
 
-
 #include "private.h"
-
+#include "minmax.h"
 uint8_t _make_addr( uint8_t subnet, uint8_t addr );
 void check_merge_timeouts( node n, int port );
 void merge( node n, int port, int length, uint8_t *latest );
@@ -108,6 +107,7 @@ void handle_dmx( node n, artnet_packet p )
 	data_length = (int)bytes_to_short( p->data.admx.lengthHi,
 		p->data.admx.length );
 	data_length = min( data_length, ARTNET_DMX_LENGTH );
+
 
 	// find matching output ports
 	for( i = 0; i < ARTNET_MAX_PORTS; i++ )
